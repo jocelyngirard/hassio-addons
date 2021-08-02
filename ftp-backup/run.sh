@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "[Info] Starting FTP Backup docker!"
+echo "[Info] Starting FTP Backup!"
 
 CONFIG_PATH=/data/options.json
 ftpprotocol=$(jq --raw-output ".ftpprotocol" $CONFIG_PATH)
@@ -19,24 +19,17 @@ credentials=""
 if [ "${#ftppassword}" -gt "0" ]; then
 	credentials="-u $ftpusername:$ftppassword"
 fi
-	
-today=`date +%Y%m%d%H%M%S`
-hassconfig="/config"
+
 hassbackup="/backup"
-zipfile="homeassistant_backup_$today.zip"
-zippath="$hassbackup/$zipfile"
 
-echo "[Info] Starting backup creating $zippath"
-cd $hassconfig
-zip -P $zippassword -r $zippath . -x ./*.db ./*.db-shm ./*.db-wal
-echo "[Info] Finished archiving configuration"
-
-echo "[Info] trying to upload $zippath to $ftpurl"
-curl $addftpflags $credentials -T $zippath $ftpurl
+echo "[Info] trying to upload backup files to $ftpurl"
+cd $hassbackup
+curl $addftpflags $credentials -T "{$(echo *.tar | tr ' ' ',')}" $ftpurl
+cd -
 
 if [ "${#deleteolderthan}" -gt "0" ]; then
 	echo "[Info] Deleting files older than $deleteolderthan days"
-	find $hassbackup/homeassistant_backup* -mtime +$deleteolderthan -exec rm {} \;
+	find $hassbackup/*.tar -mtime +$deleteolderthan -exec rm {} \;
 fi
 
 echo "[Info] Finished ftp backup"
